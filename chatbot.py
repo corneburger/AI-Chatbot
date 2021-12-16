@@ -6,9 +6,9 @@ from tflearn.layers.core import activation
 stemmer = LancasterStemmer()
 
 import numpy as np
+import tensorflow as tf 
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2' 
-import tensorflow as tf 
 import tensorflow.keras
 import tflearn
 import random
@@ -19,7 +19,8 @@ with open("AI_Chatbot/intents.json") as file:
     data = json.load(file)
 
 try:    # Try to open data that is already preprocessed
-    with open ("data.pickle", "rb") as f:   # Read pickle data
+    x
+    with open ("AI_Chatbot/data.pickle", "rb") as f:   # Read pickle data
         words, labels, training, output = pickle.load(f)    # Load data from pickle file
 
 except: # Else re-train model on new data
@@ -96,7 +97,7 @@ except: # Else re-train model on new data
     print("\ntraining:\n", training)  
     print("\noutput:\n", output)  
 
-    with open("data.pickle", "wb") as f:    # After all preprocessing then save pickle model
+    with open("AI_Chatbot/data.pickle", "wb") as f:    # After all preprocessing then save pickle model
         pickle.dump((words, labels, training, output), f)
 
 # tf.reset_default_graph()    # Get rid of prev settings    (don't word here)
@@ -110,25 +111,50 @@ net = tflearn.regression(net)
 model = tflearn.DNN(net)    # Train model   (DNN = deep neural network)(DNN is normal neural network)(DNN is an ANN)
 
 try:    # try to load in already trained model
-    model.load("model.tflearn")
+    model.load("AI_Chatbot/model.tflearn")
+    # x
 except: # Else train model and save model
     model.fit(training, output, n_epoch=1000, batch_size=8, show_metric=True)   # pass training data to model
-    model.save("model.tflearn") # Save model as model.tflearn
+    model.save("AI_Chatbot/model.tflearn") # Save model as model.tflearn
+
 
 # Make predictions:
  
-def baf_of_words(s, words): # Convert sentence to back of words # s is sentence and words is words list to create bag of words of
+def bag_of_words(s, words): # Convert sentence to back of words # s is sentence and words is words list to create bag of words of
 
-    bag = []
+    bag = [0 for _ in range(len(words))]
     
-    s_words = nltk.words_tokenize(s)
-    s_words = [stemmer.stem(word.lower()) for word in s_words]
+    s_words = nltk.word_tokenize(s)    # tokensize sentence 
+    s_words = [stemmer.stem(word.lower()) for word in s_words]  # stem words in s_words
 
-    for se in s_words:
-        for i, w in enumerate(words):
-            if w == se:
-                bag[i].append(1)
+    for se in s_words:  # Loop through stemmed words
+        for i, w in enumerate(words):   # Loop through words      
+            if w == se:     # If stemmed word from sentence match word from words
+                bag[i] = 1  
 
     return np.array(bag)
 
-    
+def chat(): # Input from user to give output
+    print("Start talking with the bot!  (type quit to stop)")
+    while True:
+        inp = input("You: ")
+        if inp.lower() == "quit":   # If user typed quit then exit
+            break
+
+        results = model.predict([bag_of_words(inp, words)])[0] # Get propabilities but need highest propability
+        print(results)
+        results_index = np.argmax(results)
+        
+        tag = labels[results_index] # Get tag associated with model prediction
+
+        if results[results_index] > 0.7:    # Only give response if certainty above 70%
+            for tg in data["intents"]:
+                 if tg['tag'] == tag:
+                     responses = tg["responses"]
+
+            print(random.choice(responses)) # Print random response from responses
+        
+        else:
+            print("I didn't get that, try again.")
+
+chat()
